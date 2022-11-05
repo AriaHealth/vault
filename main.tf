@@ -128,7 +128,7 @@ module "instance_sg" {
 
 module "alb" {
   source  = "terraform-aws-modules/alb/aws"
-  version = "5.9.0"
+  version = "8.2.0"
 
   name = var.name
 
