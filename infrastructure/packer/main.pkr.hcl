@@ -2,6 +2,12 @@ source "amazon-ebs" "main" {
   ami_name = "rolling_update_{{timestamp}}"
   region   = "eu-west-1"
 
+  spot_instance_types = ["t3.small", "t3.medium", "t3.large"]
+  spot_price          = "auto"
+  fleet_tags = {
+    "Name" = "rolling_update_{{timestamp}}"
+  }
+
   source_ami_filter {
     filters = {
       virtualization-type = "hvm"
