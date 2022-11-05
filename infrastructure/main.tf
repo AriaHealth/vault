@@ -44,9 +44,9 @@ Resources:
     Properties:
       AutoScalingGroupName: "${var.name}"
       HealthCheckGracePeriod: 300
-      DesiredCapacity: 2
-      MaxSize: 2
-      MinSize: 1
+      DesiredCapacity: 0
+      MaxSize: 0
+      MinSize: 0
       VPCZoneIdentifier: ["${join("\",\"", data.aws_subnet_ids.all.ids)}"]
       TargetGroupARNs: ${jsonencode([for tg_arn in module.alb.target_group_arns : tg_arn])}
       Tags: ${jsonencode([for key, value in var.tags : map("Key", key, "PropagateAtLaunch", "true", "Value", value)])}
