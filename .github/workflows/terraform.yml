@@ -29,7 +29,7 @@ jobs:
           command: build
           arguments: "-color=false -on-error=abort"
           target: main.pkr.hcl
-          working_directory: packer
+          working_directory: infrastructure/packer
         env:
           PACKER_LOG: 1
 
