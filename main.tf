@@ -106,7 +106,7 @@ module "loadbalancer_sg" {
 
 module "instance_sg" {
   source  = "terraform-aws-modules/security-group/aws"
-  version = "~> 3.0"
+  version = "~> 4.16.0"
 
   name        = "${var.name}_instances_sg"
   description = "Security group for example usage with EC2 Instances"
