@@ -19,61 +19,151 @@ terraform {
     }
   }
 }
-
-provider "aws" {
-  region = "eu-west-1"
-}
-
-resource "random_pet" "sg" {}
-
-data "aws_ami" "ubuntu" {
-  most_recent = true
-
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
+resource "aws_launch_template" "this" {
+  name_prefix   = var.name
+  image_id      = data.aws_ami.selected.id
+  instance_type = var.instance_type
+  network_interfaces {
+    security_groups             = [module.instance_sg.this_security_group_id]
+    delete_on_termination       = true
+    associate_public_ip_address = true
   }
 
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-
-  owners = ["099720109477"] # Canonical
+  user_data = base64encode(templatefile("userData.sh", { CFN_STACK = var.name, REGION = "eu-west-1" }))
 }
 
-resource "aws_instance" "web" {
-  ami                    = data.aws_ami.ubuntu.id
-  instance_type          = "t2.micro"
-  vpc_security_group_ids = [aws_security_group.web-sg.id]
+resource "aws_cloudformation_stack" "this" {
+  name = var.name
 
-  user_data = <<-EOF
-              #!/bin/bash
-              apt-get update
-              apt-get install -y apache2
-              sed -i -e 's/80/8080/' /etc/apache2/ports.conf
-              echo "Hello World!" > /var/www/html/index.html
-              systemctl restart apache2
-              EOF
+  template_body = <<EOF
+Resources:
+  ASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: "${var.name}"
+      HealthCheckGracePeriod: 300
+      DesiredCapacity: 2
+      MaxSize: 2
+      MinSize: 1
+      VPCZoneIdentifier: ["${join("\",\"", data.aws_subnet_ids.all.ids)}"]
+      TargetGroupARNs: ${jsonencode([for tg_arn in module.alb.target_group_arns : tg_arn])}
+      Tags: ${jsonencode([for key, value in var.tags : map("Key", key, "PropagateAtLaunch", "true", "Value", value)])}
+      HealthCheckType: EC2
+
+      MixedInstancesPolicy:
+        InstancesDistribution:
+          OnDemandBaseCapacity: 0
+          OnDemandPercentageAboveBaseCapacity: 0
+          SpotAllocationStrategy: capacity-optimized
+        LaunchTemplate:
+          LaunchTemplateSpecification:
+            LaunchTemplateName: "${aws_launch_template.this.name}"
+            Version: "${aws_launch_template.this.latest_version}"
+          Overrides: ${jsonencode([for type in var.instance_type_override : map("InstanceType", type)])}
+
+    UpdatePolicy:
+    # Ignore differences in group size properties caused by scheduled actions
+      AutoScalingScheduledAction:
+        IgnoreUnmodifiedGroupSizeProperties: true
+      AutoScalingRollingUpdate:
+        MinSuccessfulInstancesPercent: 50
+        PauseTime: PT10M
+        SuspendProcesses:
+          - HealthCheck
+          - ReplaceUnhealthy
+          - AZRebalance
+          - AlarmNotification
+          - ScheduledActions
+        WaitOnResourceSignals: true
+
+    DeletionPolicy: Delete
+EOF
+
+  depends_on = [
+    module.alb
+  ]
 }
 
-resource "aws_security_group" "web-sg" {
-  name = "${random_pet.sg.id}-sg"
-  ingress {
-    from_port   = 8080
-    to_port     = 8080
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  // connectivity to ubuntu mirrors is required to run `apt-get update` and `apt-get install apache2`
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+module "loadbalancer_sg" {
+  source  = "terraform-aws-modules/security-group/aws"
+  version = "~> 3.0"
+
+  name        = "${var.name}_lb_sg"
+  description = "Security group for example usage with ALB"
+  vpc_id      = data.aws_vpc.default.id
+
+  ingress_cidr_blocks = ["0.0.0.0/0"]
+  ingress_rules       = ["http-80-tcp"]
+  computed_egress_with_source_security_group_id = [
+    {
+      rule                     = "http-80-tcp"
+      source_security_group_id = module.instance_sg.this_security_group_id
+    },
+  ]
+
+  number_of_computed_egress_with_source_security_group_id = 1
 }
 
-output "web-address" {
-  value = "${aws_instance.web.public_dns}:8080"
+module "instance_sg" {
+  source  = "terraform-aws-modules/security-group/aws"
+  version = "~> 3.0"
+
+  name        = "${var.name}_instances_sg"
+  description = "Security group for example usage with EC2 Instances"
+  vpc_id      = data.aws_vpc.default.id
+
+  computed_ingress_with_source_security_group_id = [
+    {
+      rule                     = "http-80-tcp"
+      source_security_group_id = module.loadbalancer_sg.this_security_group_id
+    },
+  ]
+
+  egress_cidr_blocks = ["0.0.0.0/0"]
+  egress_rules       = ["https-443-tcp"]
+
+  number_of_computed_ingress_with_source_security_group_id = 1
+
+}
+
+module "alb" {
+  source  = "terraform-aws-modules/alb/aws"
+  version = "5.9.0"
+
+  name = var.name
+
+  load_balancer_type = "application"
+
+  vpc_id          = data.aws_vpc.default.id
+  security_groups = [module.loadbalancer_sg.this_security_group_id]
+  subnets         = data.aws_subnet_ids.all.ids
+
+  http_tcp_listeners = [
+    {
+      port               = 80
+      protocol           = "HTTP"
+      target_group_index = 0
+    }
+  ]
+
+  target_groups = [
+    {
+      name_prefix          = "h1"
+      backend_protocol     = "HTTP"
+      backend_port         = 80
+      target_type          = "instance"
+      deregistration_delay = 10
+      health_check = {
+        enabled             = true
+        interval            = 30
+        path                = "/"
+        port                = "traffic-port"
+        healthy_threshold   = 3
+        unhealthy_threshold = 3
+        timeout             = 6
+        protocol            = "HTTP"
+        matcher             = "200-399"
+      }
+    },
+  ]
 }
