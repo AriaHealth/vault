@@ -1,3 +1,3 @@
 output "lb_dns" {
-  value = "http://${module.alb.this_lb_dns_name}"
+  value = "http://${module.alb.lb_dns_name}"
 }

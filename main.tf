@@ -4,10 +4,6 @@ terraform {
       source  = "hashicorp/aws"
       version = ">= 4.27.0"
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "3.0.1"
-    }
   }
   required_version = ">= 1.1.0"
 
@@ -24,12 +20,12 @@ resource "aws_launch_template" "this" {
   image_id      = data.aws_ami.selected.id
   instance_type = var.instance_type
   network_interfaces {
-    security_groups             = [module.instance_sg.this_security_group_id]
+    security_groups             = [module.instance_sg.security_group_id]
     delete_on_termination       = true
     associate_public_ip_address = true
   }
 
-  user_data = base64encode(templatefile("userData.sh", { CFN_STACK = var.name, REGION = "eu-west-1" }))
+  user_data = base64encode(templatefile("user-data.sh", { CFN_STACK = var.name, REGION = "eu-west-1" }))
 }
 
 resource "aws_cloudformation_stack" "this" {
@@ -86,7 +82,7 @@ EOF
 
 module "loadbalancer_sg" {
   source  = "terraform-aws-modules/security-group/aws"
-  version = "~> 3.0"
+  version = "~> 4.16.0"
 
   name        = "${var.name}_lb_sg"
   description = "Security group for example usage with ALB"
@@ -97,7 +93,7 @@ module "loadbalancer_sg" {
   computed_egress_with_source_security_group_id = [
     {
       rule                     = "http-80-tcp"
-      source_security_group_id = module.instance_sg.this_security_group_id
+      source_security_group_id = module.instance_sg.security_group_id
     },
   ]
 
@@ -115,7 +111,7 @@ module "instance_sg" {
   computed_ingress_with_source_security_group_id = [
     {
       rule                     = "http-80-tcp"
-      source_security_group_id = module.loadbalancer_sg.this_security_group_id
+      source_security_group_id = module.loadbalancer_sg.security_group_id
     },
   ]
 
@@ -135,7 +131,7 @@ module "alb" {
   load_balancer_type = "application"
 
   vpc_id          = data.aws_vpc.default.id
-  security_groups = [module.loadbalancer_sg.this_security_group_id]
+  security_groups = [module.loadbalancer_sg.security_group_id]
   subnets         = data.aws_subnet_ids.all.ids
 
   http_tcp_listeners = [
