@@ -1,6 +1,9 @@
 source "amazon-ebs" "main" {
   ami_name = "rolling_update_{{timestamp}}"
   region   = "eu-west-1"
+  tags = {
+    Name = "rolling_update_{{timestamp}}"
+  }
 
   spot_instance_types = ["t3.small", "t3.medium", "t3.large"]
   spot_price          = "auto"
