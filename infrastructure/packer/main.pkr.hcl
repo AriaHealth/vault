@@ -41,7 +41,7 @@ build {
   ]
 
   provisioner "shell" {
-    script = "infrastructure/packer/scripts/basic-website.sh"
+    script = "scripts/basic-website.sh"
     environment_vars = [
       "COLOR=${var.color}",
     ]
