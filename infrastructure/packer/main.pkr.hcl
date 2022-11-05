@@ -4,8 +4,8 @@ source "amazon-ebs" "main" {
 
   spot_instance_types = ["t3.small", "t3.medium", "t3.large"]
   spot_price          = "auto"
-  fleet_tags = {
-    "Name" = "rolling_update_{{timestamp}}"
+  run_volume_tags = {
+    "Name" = "run_volume_rolling_update_{{timestamp}}"
   }
 
   source_ami_filter {
