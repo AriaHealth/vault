@@ -5,7 +5,7 @@ terraform {
       version = "4.38.0"
     }
   }
-  required_version = ">= 1.1.0"
+
 
   cloud {
     organization = "dcentric-health"
