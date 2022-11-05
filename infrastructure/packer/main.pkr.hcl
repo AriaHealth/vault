@@ -2,7 +2,7 @@ source "amazon-ebs" "main" {
   ami_name = "rolling_update_{{timestamp}}"
   region   = "eu-west-1"
 
-  instance_types = "t3.small"
+  instance_type = "t3.small"
 
   source_ami_filter {
     filters = {
