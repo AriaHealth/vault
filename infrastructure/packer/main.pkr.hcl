@@ -29,6 +29,10 @@ source "amazon-ebs" "main" {
   }
 }
 
+variable "color" {
+  default = "red"
+}
+
 build {
   name = "rolling_update_{{timestamp}}"
 
