@@ -15,6 +15,12 @@ terraform {
     }
   }
 }
+
+# Configure the AWS Provider
+provider "aws" {
+  region = "eu-west-1"
+}
+
 resource "aws_launch_template" "this" {
   name_prefix   = var.name
   image_id      = data.aws_ami.selected.id
