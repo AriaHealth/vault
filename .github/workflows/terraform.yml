@@ -38,12 +38,6 @@ jobs:
         run: terraform plan -no-color -input=false
         continue-on-error: true
 
-      # fix backwards incompatibilities in template
-      - name: Fix Template
-        uses: hashicorp/packer-github-actions@master
-        with:
-          command: fix
-
       # validate templates
       - name: Validate Template
         uses: hashicorp/packer-github-actions@master
