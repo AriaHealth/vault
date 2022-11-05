@@ -20,6 +20,15 @@ jobs:
           # terraform_version: 0.13.0:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
+      - name: Build Artifact
+          uses: hashicorp/packer-github-actions@master
+          with:
+            command: build
+            arguments: "-color=false -on-error=abort"
+            target: main.pkr.hcl
+          env:
+            PACKER_LOG: 1
+
       - name: Terraform Format
         id: fmt
         run: terraform fmt -check
@@ -37,25 +46,6 @@ jobs:
         if: github.event_name == 'pull_request'
         run: terraform plan -no-color -input=false
         continue-on-error: true
-
-      # validate templates
-      - name: Validate Template
-        uses: hashicorp/packer-github-actions@master
-        with:
-          command: validate
-          arguments: -syntax-only
-          target: main.pkr.hcl
-
-      # build artifact
-      - name: Build Artifact
-        uses: hashicorp/packer-github-actions@master
-        with:
-          command: build
-          arguments: "-color=false -on-error=abort"
-          target: packer.pkr.hcl
-          working_directory: infrastructure/packer
-        env:
-          PACKER_LOG: 1
 
       - uses: actions/github-script@v6
         if: github.event_name == 'pull_request'
