@@ -36,7 +36,7 @@ jobs:
         with:
           command: build
           arguments: "-color=false -on-error=abort"
-          target: variables.pkr.hcl main.pkr.hcl build.pkr.hcl
+          target: variables.pkr.hcl main.pkr.hcl
           working_directory: infrastructure/packer
         env:
           PACKER_LOG: 1
