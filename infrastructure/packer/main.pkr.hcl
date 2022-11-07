@@ -43,3 +43,7 @@ build {
     execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
   }
 }
+
+variable "color" {
+  default = "red"
+}
