@@ -28,10 +28,6 @@ source "amazon-ebs" "main" {
   }
 }
 
-variable "color" {
-  default = "red"
-}
-
 build {
   name = "rolling_update_{{timestamp}}"
 
@@ -41,9 +37,6 @@ build {
 
   provisioner "shell" {
     script = "scripts/basic-website.sh"
-    environment_vars = [
-      "COLOR=${var.color}",
-    ]
     execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
   }
 }
