@@ -21,3 +21,9 @@ variable "tags" {
   description = "Map of tags to be applied to the resources"
   default     = {}
 }
+
+variable "hosted_zone_id" {
+  type        = string
+  description = "Hosted zone id to be used for the DNS record"
+  default     = ""
+}

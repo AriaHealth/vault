@@ -95,10 +95,10 @@ module "loadbalancer_sg" {
   vpc_id      = data.aws_vpc.default.id
 
   ingress_cidr_blocks = ["0.0.0.0/0"]
-  ingress_rules       = ["https-443-tcp"]
+  ingress_rules       = ["http-80-tcp"]
   computed_egress_with_source_security_group_id = [
     {
-      rule                     = "https-443-tcp"
+      rule                     = "http-80-tcp"
       source_security_group_id = module.instance_sg.security_group_id
     },
   ]
@@ -116,7 +116,7 @@ module "instance_sg" {
 
   computed_ingress_with_source_security_group_id = [
     {
-      rule                     = "https-443-tcp"
+      rule                     = "http-80-tcp"
       source_security_group_id = module.loadbalancer_sg.security_group_id
     },
   ]
@@ -142,8 +142,8 @@ module "alb" {
 
   http_tcp_listeners = [
     {
-      port               = 443
-      protocol           = "HTTPS"
+      port               = 80
+      protocol           = "HTTP"
       target_group_index = 0
     }
   ]
@@ -151,8 +151,8 @@ module "alb" {
   target_groups = [
     {
       name_prefix          = "h1"
-      backend_protocol     = "HTTPS"
-      backend_port         = 443
+      backend_protocol     = "HTTP"
+      backend_port         = 80
       target_type          = "instance"
       deregistration_delay = 10
       health_check = {
@@ -163,7 +163,7 @@ module "alb" {
         healthy_threshold   = 3
         unhealthy_threshold = 3
         timeout             = 6
-        protocol            = "HTTPS"
+        protocol            = "HTTP"
         matcher             = "200-399"
       }
     },
